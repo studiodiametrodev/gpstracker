@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>GPS tracking</title>
+    <style type="text/css">
+      body {
+        color:#111;
+        font-family: "DroidSans", helvetica, arial, sans-serif;
+        margin: 2em;
+      }
+      h1 {
+        font-style: normal;
+        color: #373fff;
+      }
+      h3 {
+        line-height: 1.4;
+        font-weight:normal;
+      }
+      a.btn {
+        display: inline-block;
+        padding: 8px 16px;
+        margin: 0 16px 16px 0;
+        border: solid 1px #333;
+        cursor: pointer;
+        color:#111;
+        background-color:#fff;
+        text-decoration:none;
+        transition: color .5s ease, background .5s ease;
+      }
+      a.btn:hover {
+        color:#fff;
+        background-color:#333;
+      }
+    </style>
+    <!-- import the webpage's javascript file -->
+  </head>
+  <body>
+    <h1>
+      GPS tracking
+    </h1>
+    <h3>
+      Your current position is:
+      <div id="geoposition"></div>
+    </h3>
+    <div id="btn-container">
+      <a id="export" class="btn">Export Kml</a>
+      <a id="clear_data" class="btn">Clear Position History</a>
+    </div>
+    <script>
+      let coordinates = "";
+      const spanout = document.getElementById("geoposition");
+      spanout.innerHTML = `${coordinates}`;
+      if (navigator.geolocation) {
+        navigator.geolocation.watchPosition(
+          function(p) {
+            const d = new Date(p.timestamp);
+            const c = {
+              timestamp: p.timestamp,
+              latitude: p.coords.latitude,
+              longitude: p.coords.longitude,
+              speed: p.coords.speed,
+              altitude: p.coords.altitude,
+              heading: p.coords.heading,
+              accuracy: p.coords.accuracy
+            };
+            spanout.innerHTML = `<div>Lat: ${c.latitude}</div> <div>Lon: ${
+              c.longitude
+            }</div> <div>Speed: ${c.speed}</div> <div>Heading: ${
+              c.heading
+            }</div> <div>Altitude: ${
+              c.altitude
+            }</div> <div>DateTime: ${d.toLocaleDateString(
+              "it-IT"
+            )} ${d.toLocaleTimeString("it-IT")}</div> <div>Positions: ${1 +
+              localStorage.length}</div>`;
+            localStorage.setItem(p.timestamp, JSON.stringify(c));
+          },
+          function(e) {
+            console.log(e);
+          },
+          { enableHighAccuracy: false, timeout: 5000, maximumAge: 5000 }
+        );
+        const btn_export = document.getElementById("export");
+        btn_export.addEventListener("click", exportData);
+        const btn_clear = document.getElementById("clear_data");
+        btn_clear.addEventListener("click", clearData);
+      }
+
+      function exportData() {
+        let ls = { ...localStorage };
+        let pos = Object.entries(ls).map(e => JSON.parse(e[1]));
+        downloadString(prepareKml("", pos), "text/kml", "download.kml");
+      }
+
+      function downloadString(text, fileType, fileName) {
+        var blob = new Blob([text], { type: fileType });
+        var a = document.createElement("a");
+        a.download = fileName;
+        a.href = URL.createObjectURL(blob);
+        a.innerText = "Download Kml";
+        a.dataset.downloadurl = [fileType, a.download, a.href].join(":");
+        a.id = "download";
+        a.classList.add("btn");
+        a.addEventListener("click", function(e) {
+          setTimeout(function() {
+            const btn = document.getElementById("download");
+            URL.revokeObjectURL(btn.href);
+            btn.remove();
+          }, 1500);
+        });
+        document.getElementById("btn-container").appendChild(a);
+      }
+
+      function clearData() {
+        localStorage.clear();
+      }
+
+      function prepareKml(name, coords) {
+        let arr_coords = coords.map(
+          p => `${p.longitude}, ${p.latitude}, ${p.altitude}`
+        );
+        let description = ``;
+        let str_coords = arr_coords.join("\n");
+        const kml = `<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <name>${name}</name>
+    <description/>
+    <Style id="icon-1899-0288D1-nodesc-normal">
+      <IconStyle>
+        <color>ffd18802</color>
+        <scale>1</scale>
+        <Icon>
+          <href>https://www.gstatic.com/mapspro/images/stock/503-wht-blank_maps.png</href>
+        </Icon>
+        <hotSpot x="32" xunits="pixels" y="64" yunits="insetPixels"/>
+      </IconStyle>
+      <LabelStyle>
+        <scale>0</scale>
+      </LabelStyle>
+      <BalloonStyle>
+        <text><![CDATA[<h3>$[name]</h3>]]></text>
+      </BalloonStyle>
+    </Style>
+    <Style id="icon-1899-0288D1-nodesc-highlight">
+      <IconStyle>
+        <color>ffd18802</color>
+        <scale>1</scale>
+        <Icon>
+          <href>https://www.gstatic.com/mapspro/images/stock/503-wht-blank_maps.png</href>
+        </Icon>
+        <hotSpot x="32" xunits="pixels" y="64" yunits="insetPixels"/>
+      </IconStyle>
+      <LabelStyle>
+        <scale>1</scale>
+      </LabelStyle>
+      <BalloonStyle>
+        <text><![CDATA[<h3>$[name]</h3>]]></text>
+      </BalloonStyle>
+    </Style>
+    <StyleMap id="icon-1899-0288D1-nodesc">
+      <Pair>
+        <key>normal</key>
+        <styleUrl>#icon-1899-0288D1-nodesc-normal</styleUrl>
+      </Pair>
+      <Pair>
+        <key>highlight</key>
+        <styleUrl>#icon-1899-0288D1-nodesc-highlight</styleUrl>
+      </Pair>
+    </StyleMap>
+    <Folder>
+      <name>Level 0</name>
+      <Placemark>
+        <name>Route 1</name>
+        <description>${description}</description>
+        <styleUrl>#line-0288D1-5000</styleUrl>
+        <LineString>
+          <tessellate>1</tessellate>
+          <coordinates>
+          ${str_coords}
+          </coordinates>
+        </LineString>
+      </Placemark>
+    </Folder>
+  </Document>
+</kml>`;
+        return kml;
+      }
+    </script>
+  </body>
+</html>
