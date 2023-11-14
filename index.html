@@ -62,7 +62,7 @@
               latitude: p.coords.latitude,
               longitude: p.coords.longitude,
               speed: p.coords.speed,
-              altitude: p.coords.altitude,
+              altitude: p.coords.altitude?p.coords.altitude:0,
               heading: p.coords.heading,
               accuracy: p.coords.accuracy
             };
